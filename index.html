@@ -8,6 +8,11 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -563,6 +568,14 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Chargement...</span>
+        </div>
+        <p class="mt-3 text-primary fw-bold">Chargement des données...</p>
+    </div>
+
     <div class="main-container">
         <!-- Dashboard Stats -->
         <div class="row g-4 mb-4">
@@ -924,16 +937,166 @@
     <script>
         window.jsPDF = window.jspdf.jsPDF;
 
-        // Configuration
+        // ==================== FIREBASE CONFIGURATION ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBpS1w7kqzffxY1_xfT-69feiHs0LOIC6M",
+            authDomain: "aeers-cotisations.firebaseapp.com",
+            projectId: "aeers-cotisations",
+            storageBucket: "aeers-cotisations.firebasestorage.app",
+            messagingSenderId: "821167316376",
+            appId: "1:821167316376:web:648775feea823e913edfed"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const DATA_DOC = db.collection('aeers').doc('data');
+
+        // ==================== CONFIGURATION ====================
         let currentYear = new Date().getFullYear();
         const STORAGE_KEY = 'aeers-data-v2';
         const PASSWORD_KEY = 'aeers-admin-password';
         const SESSION_KEY = 'aeers-admin-session';
         const DEFAULT_PASSWORD = 'aeers2024';
         const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes
+        
+        let isOnline = true;
+        let data = null;
+        let isLoading = true;
 
-        // Fonctions de sécurité
+        // ==================== FIREBASE FUNCTIONS ====================
+        async function loadDataFromFirebase() {
+            try {
+                showLoadingOverlay(true);
+                const docSnap = await DATA_DOC.get();
+                
+                if (docSnap.exists) {
+                    data = docSnap.data();
+                    console.log('✅ Données chargées depuis Firebase');
+                } else {
+                    // Première utilisation - créer les données initiales
+                    data = getDefaultData();
+                    await DATA_DOC.set(data);
+                    console.log('✅ Données initiales créées sur Firebase');
+                }
+                
+                isOnline = true;
+                isLoading = false;
+                showLoadingOverlay(false);
+                updateAll();
+                
+            } catch (error) {
+                console.error('❌ Erreur Firebase:', error);
+                isOnline = false;
+                
+                // Fallback sur localStorage
+                const localData = localStorage.getItem(STORAGE_KEY);
+                if (localData) {
+                    data = JSON.parse(localData);
+                } else {
+                    data = getDefaultData();
+                }
+                
+                isLoading = false;
+                showLoadingOverlay(false);
+                updateAll();
+                showToast('Mode hors-ligne - Les données ne seront pas synchronisées', 'warning');
+            }
+        }
+
+        async function saveData() {
+            // Toujours sauvegarder localement
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            
+            // Sauvegarder sur Firebase si en ligne
+            if (isOnline) {
+                try {
+                    await DATA_DOC.set(data);
+                    console.log('✅ Données sauvegardées sur Firebase');
+                } catch (error) {
+                    console.error('❌ Erreur sauvegarde Firebase:', error);
+                    showToast('Erreur de synchronisation', 'error');
+                }
+            }
+        }
+
+        // Écouter les changements en temps réel
+        function listenToChanges() {
+            DATA_DOC.onSnapshot((doc) => {
+                if (doc.exists && !isLoading) {
+                    const newData = doc.data();
+                    // Ne pas mettre à jour si c'est notre propre modification
+                    if (JSON.stringify(newData) !== JSON.stringify(data)) {
+                        data = newData;
+                        updateAll();
+                        showToast('📡 Données synchronisées', 'info');
+                    }
+                }
+            }, (error) => {
+                console.error('Erreur écoute Firebase:', error);
+                isOnline = false;
+            });
+        }
+
+        function showLoadingOverlay(show) {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = show ? 'flex' : 'none';
+            }
+        }
+
+        function getDefaultData() {
+            return {
+                members: [
+                    {name: "Moussa Diop", payments: {}},
+                    {name: "Cheikh Sene", payments: {}},
+                    {name: "Ibrahima Sanding", payments: {}},
+                    {name: "Cheikh Thioune", payments: {}},
+                    {name: "Amadou Thior", payments: {}},
+                    {name: "Daouda Dianko", payments: {}},
+                    {name: "Matine Diouf", payments: {}},
+                    {name: "Cheikh Mbow", payments: {}},
+                    {name: "Mamoudou Diop", payments: {}},
+                    {name: "Abdou Khadre Diallo", payments: {}},
+                    {name: "Bineta Senghor", payments: {}},
+                    {name: "Rougui Sow", payments: {}},
+                    {name: "Mami Thiam", payments: {}},
+                    {name: "Lala Touré", payments: {}},
+                    {name: "Bineta Diallo", payments: {}},
+                    {name: "Oly Diongue", payments: {}},
+                    {name: "Astou Diallo", payments: {}},
+                    {name: "Seynaba Camara", payments: {}},
+                    {name: "Mariama Diallo", payments: {}},
+                    {name: "Dieynaba Ka", payments: {}},
+                    {name: "Thioro Ka", payments: {}},
+                    {name: "Haby Sarr", payments: {}},
+                    {name: "Sophie Ndiaye", payments: {}},
+                    {name: "Fatou Samb", payments: {}},
+                    {name: "Astou Mané", payments: {}},
+                    {name: "Khadija Ba", payments: {}},
+                    {name: "Nguénar Mbodj", payments: {}},
+                    {name: "Yacine Marone", payments: {}},
+                    {name: "Siga Ndiaye", payments: {}},
+                    {name: "Khadija Sarr", payments: {}},
+                    {name: "Yacine Thiam", payments: {}},
+                    {name: "Sadany Aidara", payments: {}},
+                    {name: "Khadim Pouye", payments: {}},
+                ],
+                expenses: [],
+                incomes: [],
+                balance: 0,
+                contributionAmount: 10000,
+                transactions: [],
+                adminPassword: DEFAULT_PASSWORD
+            };
+        }
+
+        // ==================== FONCTIONS DE SÉCURITÉ ====================
         function getStoredPassword() {
+            // Priorité: Firebase > localStorage > default
+            if (data && data.adminPassword) {
+                return data.adminPassword;
+            }
             return localStorage.getItem(PASSWORD_KEY) || DEFAULT_PASSWORD;
         }
 
@@ -986,7 +1149,7 @@
             modal.show();
         }
 
-        function changePassword() {
+        async function changePassword() {
             const currentPwd = document.getElementById('current-password').value;
             const newPwd = document.getElementById('new-password').value;
             const confirmPwd = document.getElementById('confirm-password').value;
@@ -1006,6 +1169,9 @@
                 return;
             }
 
+            // Sauvegarder dans Firebase et localStorage
+            data.adminPassword = newPwd;
+            await saveData();
             localStorage.setItem(PASSWORD_KEY, newPwd);
             
             // Fermer le modal
@@ -1020,62 +1186,7 @@
             showToast('Mot de passe changé avec succès !', 'success');
         }
 
-        // Données initiales
-        const defaultData = {
-            members: [
-                {name: "Moussa Diop", payments: {}},
-                {name: "Cheikh Sene", payments: {}},
-                {name: "Ibrahima Sanding", payments: {}},
-                {name: "Cheikh Thioune", payments: {}},
-                {name: "Amadou Thior", payments: {}},
-                {name: "Daouda Dianko", payments: {}},
-                {name: "Matine Diouf", payments: {}},
-                {name: "Cheikh Mbow", payments: {}},
-                {name: "Mamoudou Diop", payments: {}},
-                {name: "Abdou Khadre Diallo", payments: {}},
-                {name: "Bineta Senghor", payments: {}},
-                {name: "Rougui Sow", payments: {}},
-                {name: "Mami Thiam", payments: {}},
-                {name: "Lala Touré", payments: {}},
-                {name: "Bineta Diallo", payments: {}},
-                {name: "Oly Diongue", payments: {}},
-                {name: "Astou Diallo", payments: {}},
-                {name: "Seynaba Camara", payments: {}},
-                {name: "Mariama Diallo", payments: {}},
-                {name: "Dieynaba Ka", payments: {}},
-                {name: "Thioro Ka", payments: {}},
-                {name: "Haby Sarr", payments: {}},
-                {name: "Sophie Ndiaye", payments: {}},
-                {name: "Fatou Samb", payments: {}},
-                {name: "Astou Mané", payments: {}},
-                {name: "Khadija Ba", payments: {}},
-                {name: "Nguénar Mbodj", payments: {}},
-                {name: "Yacine Marone", payments: {}},
-                {name: "Siga Ndiaye", payments: {}},
-                {name: "Khadija Sarr", payments: {}},
-                {name: "Yacine Thiam", payments: {}},
-                {name: "Sadany Aidara", payments: {}},
-                {name: "Khadim Pouye", payments: {}},
-            ],
-            expenses: [],
-            incomes: [],
-            balance: 0,
-            contributionAmount: 10000,
-            transactions: []
-        };
-
-        let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || JSON.parse(JSON.stringify(defaultData));
-        
-        // Migration des anciennes données
-        if (!data.contributionAmount) data.contributionAmount = 10000;
-        if (!data.transactions) data.transactions = [];
-        if (!data.incomes) data.incomes = [];
-
         // Fonctions utilitaires
-        function saveData() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        }
-
         function formatCurrency(amount) {
             return amount.toLocaleString('fr-FR') + ' CFA';
         }
@@ -1123,7 +1234,13 @@
         }
 
         // Initialisation
-        function init() {
+        async function init() {
+            // Charger les données depuis Firebase
+            await loadDataFromFirebase();
+            
+            // Écouter les changements en temps réel
+            listenToChanges();
+            
             // Vérifier la session admin
             checkSession();
 
@@ -1294,7 +1411,7 @@
         }
 
         // Actions
-        function addMember() {
+        async function addMember() {
             const nameInput = document.getElementById('new-member-name');
             const name = nameInput.value.trim();
 
@@ -1317,11 +1434,11 @@
             nameInput.value = '';
             
             updateAll();
-            saveData();
+            await saveData();
             showToast(`${name} a été ajouté avec succès !`, 'success');
         }
 
-        function deleteMember() {
+        async function deleteMember() {
             const memberName = document.getElementById('delete-member-select').value;
 
             if (!memberName) {
@@ -1341,11 +1458,11 @@
             modal.hide();
 
             updateAll();
-            saveData();
+            await saveData();
             showToast(`${memberName} a été supprimé`, 'warning');
         }
 
-        function markPayment() {
+        async function markPayment() {
             const memberName = document.getElementById('member-select').value;
             const month = document.getElementById('month-select').value;
             const member = data.members.find(m => m.name === memberName);
@@ -1364,11 +1481,11 @@
             data.balance += data.contributionAmount;
 
             updateAll();
-            saveData();
+            await saveData();
             showToast(`Cotisation de ${memberName} enregistrée !`, 'success');
         }
 
-        function unmarkPayment() {
+        async function unmarkPayment() {
             const memberName = document.getElementById('member-select').value;
             const month = document.getElementById('month-select').value;
             const member = data.members.find(m => m.name === memberName);
@@ -1382,11 +1499,11 @@
             data.balance -= data.contributionAmount;
 
             updateAll();
-            saveData();
+            await saveData();
             showToast(`Cotisation de ${memberName} annulée`, 'warning');
         }
 
-        function addExpense() {
+        async function addExpense() {
             const date = document.getElementById('expense-date').value;
             const label = document.getElementById('expense-label').value.trim();
             const amount = parseInt(document.getElementById('expense-amount').value);
@@ -1404,11 +1521,11 @@
             document.getElementById('expense-amount').value = '';
 
             updateAll();
-            saveData();
+            await saveData();
             showToast('Dépense enregistrée !', 'success');
         }
 
-        function addIncome() {
+        async function addIncome() {
             const date = document.getElementById('income-date').value;
             const type = document.getElementById('income-type').value;
             const description = document.getElementById('income-label').value.trim();
@@ -1428,7 +1545,7 @@
             document.getElementById('income-amount').value = '';
 
             updateAll();
-            saveData();
+            await saveData();
             showToast(`${type} de ${formatCurrency(amount)} enregistré !`, 'success');
         }
 
@@ -1462,7 +1579,7 @@
             modal.show();
         }
 
-        function confirmDelete() {
+        async function confirmDelete() {
             const password = document.getElementById('delete-confirm-password').value;
             const storedPassword = getStoredPassword();
 
@@ -1495,14 +1612,14 @@
             document.getElementById('delete-confirm-password').value = '';
 
             updateAll();
-            saveData();
+            await saveData();
         }
 
-        function updateContributionAmount() {
+        async function updateContributionAmount() {
             const amount = parseInt(document.getElementById('contribution-amount').value);
             if (amount && amount > 0) {
                 data.contributionAmount = amount;
-                saveData();
+                await saveData();
                 showToast(`Montant de cotisation mis à jour : ${formatCurrency(amount)}`, 'success');
             }
         }
