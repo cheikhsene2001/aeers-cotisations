@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEERS - Gestion des Cotisations</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --light-bg: #f8f9fa;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        /* Header / Navbar */
+        .navbar-custom {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--card-shadow);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary-color) !important;
+            font-size: 1.5rem;
+        }
+
+        .navbar-brand i {
+            color: var(--secondary-color);
+        }
+
+        /* Lock Overlay */
+        .lock-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(44, 62, 80, 0.95);
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            border-radius: 0 0 16px 16px;
+        }
+
+        .lock-overlay i {
+            font-size: 3rem;
+            color: #f39c12;
+            margin-bottom: 15px;
+        }
+
+        .lock-overlay h5 {
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .lock-overlay .unlock-form {
+            display: flex;
+            gap: 10px;
+            max-width: 300px;
+            width: 100%;
+        }
+
+        .lock-overlay input {
+            flex-grow: 1;
+        }
+
+        .admin-section {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .session-badge {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+        }
+
+        /* Main Container */
+        .main-container {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Dashboard Cards */
+        .dashboard-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: none;
+            height: 100%;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .dashboard-card .icon-wrapper {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+
+        .dashboard-card.balance .icon-wrapper {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .dashboard-card.income .icon-wrapper {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+
+        .dashboard-card.expense .icon-wrapper {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .dashboard-card.members .icon-wrapper {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .dashboard-card h6 {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .dashboard-card h2 {
+            color: var(--primary-color);
+            font-weight: 700;
+            margin: 0;
+        }
+
+        /* Section Cards */
+        .section-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, var(--primary-color), #34495e);
+            color: white;
+            padding: 20px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section-header h4 {
+            margin: 0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-body {
+            padding: 25px;
+        }
+
+        /* Table Styling */
+        .table-container {
+            max-height: 500px;
+            overflow: auto;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+        }
+
+        .members-table {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .members-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .members-table thead th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            padding: 12px 8px;
+            border: none;
+            white-space: nowrap;
+        }
+
+        .members-table thead th:first-child {
+            text-align: left;
+            min-width: 180px;
+        }
+
+        .members-table tbody td {
+            text-align: center;
+            vertical-align: middle;
+            padding: 10px 8px;
+            border-color: #e9ecef;
+        }
+
+        .members-table tbody td:first-child {
+            text-align: left;
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+
+        .members-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .status-paid {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb) !important;
+        }
+
+        .status-unpaid {
+            background: linear-gradient(135deg, #fff3cd, #ffeeba) !important;
+        }
+
+        .status-icon {
+            font-size: 1.1rem;
+        }
+
+        .status-icon.paid {
+            color: var(--success-color);
+        }
+
+        .status-icon.unpaid {
+            color: var(--danger-color);
+        }
+
+        /* Admin Panel */
+        .admin-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 12px;
+            padding: 20px;
+            height: 100%;
+            border: 1px solid #dee2e6;
+        }
+
+        .admin-card h5 {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            padding: 10px 15px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+        }
+
+        .btn {
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #1f6dad);
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            border: none;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #229954, #1e8449);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border: none;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #c0392b, #a93226);
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12, #d68910);
+            border: none;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #d68910, #b9770e);
+            transform: translateY(-2px);
+            color: white;
+        }
+
+        /* Transactions Table */
+        .transactions-table {
+            margin: 0;
+        }
+
+        .transactions-table thead th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+            border: none;
+        }
+
+        .transactions-table .badge {
+            font-size: 0.8rem;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+
+        /* Export Button */
+        .export-fab {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .export-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        /* Stats Progress */
+        .stats-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .progress {
+            height: 8px;
+            border-radius: 4px;
+            flex-grow: 1;
+        }
+
+        .progress-bar {
+            border-radius: 4px;
+        }
+
+        /* Search Box */
+        .search-box {
+            position: relative;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #7f8c8d;
+        }
+
+        .search-box input {
+            padding-left: 45px;
+        }
+
+        /* Year Selector */
+        .year-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .year-selector select {
+            width: auto;
+            font-weight: 600;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1050;
+        }
+
+        /* Modal Styling */
+        .modal-content {
+            border-radius: 16px;
+            border: none;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary-color), #34495e);
+            color: white;
+            border-radius: 16px 16px 0 0;
+        }
+
+        .modal-header .btn-close {
+            filter: brightness(0) invert(1);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-card {
+                margin-bottom: 15px;
+            }
+
+            .section-body {
+                padding: 15px;
+            }
+
+            .admin-card {
+                margin-bottom: 15px;
+            }
+
+            .export-fab {
+                bottom: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .navbar-custom, .admin-section, .export-fab, .footer {
+                display: none;
+            }
+
+            .section-card {
+                box-shadow: none;
+                break-inside: avoid;
+            }
+        }
+
+        /* Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.5s ease forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+                <img src="logo.png" alt="AEERS Logo" height="45" class="rounded-circle" onerror="this.style.display='none'">
+                <span>AEERS</span>
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <div class="year-selector">
+                    <label class="text-muted mb-0">Année :</label>
+                    <select class="form-select form-select-sm" id="year-select" onchange="changeYear()">
+                    </select>
+                </div>
+                <span class="badge bg-primary" id="current-date"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <div class="main-container">
+        <!-- Dashboard Stats -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-3 col-md-6 animate-in delay-1">
+                <div class="dashboard-card balance">
+                    <div class="icon-wrapper">
+                        <i class="bi bi-wallet2"></i>
+                    </div>
+                    <h6>Solde Actuel</h6>
+                    <h2 id="current-balance">0 CFA</h2>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 animate-in delay-2">
+                <div class="dashboard-card income">
+                    <div class="icon-wrapper">
+                        <i class="bi bi-arrow-down-circle"></i>
+                    </div>
+                    <h6>Cotisations ce mois</h6>
+                    <h2 id="month-contributions">0 CFA</h2>
+                    <div class="stats-row">
+                        <div class="progress flex-grow-1">
+                            <div class="progress-bar bg-success" id="contribution-progress" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted" id="contribution-percent">0%</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 animate-in delay-3">
+                <div class="dashboard-card expense">
+                    <div class="icon-wrapper">
+                        <i class="bi bi-arrow-up-circle"></i>
+                    </div>
+                    <h6>Dépenses ce mois</h6>
+                    <h2 id="month-expenses">0 CFA</h2>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 animate-in delay-4">
+                <div class="dashboard-card members">
+                    <div class="icon-wrapper">
+                        <i class="bi bi-person-check"></i>
+                    </div>
+                    <h6>Membres</h6>
+                    <h2 id="total-members">0</h2>
+                    <small class="text-muted" id="paid-members-info">0 à jour ce mois</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Members Table Section -->
+        <div class="section-card animate-in">
+            <div class="section-header">
+                <h4><i class="bi bi-table"></i> État des Cotisations</h4>
+                <div class="d-flex gap-2">
+                    <div class="search-box">
+                        <i class="bi bi-search"></i>
+                        <input type="text" class="form-control form-control-sm" id="search-member" 
+                               placeholder="Rechercher un membre..." onkeyup="filterMembers()">
+                    </div>
+                </div>
+            </div>
+            <div class="section-body">
+                <div class="table-container">
+                    <table class="table members-table" id="members-table">
+                        <thead>
+                            <tr>
+                                <th><i class="bi bi-person"></i> Membre</th>
+                                <th>Jan</th><th>Fév</th><th>Mar</th><th>Avr</th><th>Mai</th><th>Juin</th>
+                                <th>Juil</th><th>Aoû</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Déc</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Section -->
+        <div class="section-card admin-section animate-in" id="admin-section">
+            <div class="section-header">
+                <h4><i class="bi bi-gear-fill"></i> Espace Trésorier</h4>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success session-badge" id="session-status" style="display: none;">
+                        <i class="bi bi-unlock"></i> Connecté
+                    </span>
+                    <button class="btn btn-sm btn-outline-light" id="logout-btn" onclick="lockAdmin()" style="display: none;">
+                        <i class="bi bi-box-arrow-right"></i> Déconnexion
+                    </button>
+                    <button class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#admin-panel">
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Lock Overlay -->
+            <div class="lock-overlay" id="lock-overlay">
+                <i class="bi bi-shield-lock"></i>
+                <h5>Accès sécurisé</h5>
+                <div class="unlock-form">
+                    <input type="password" class="form-control" id="admin-password" 
+                           placeholder="Mot de passe" onkeypress="if(event.key==='Enter') unlockAdmin()">
+                    <button class="btn btn-warning" onclick="unlockAdmin()">
+                        <i class="bi bi-unlock"></i>
+                    </button>
+                </div>
+                <small class="text-muted mt-3">Mot de passe par défaut: <code>aeers2024</code></small>
+                <button class="btn btn-link text-light mt-2" onclick="showChangePassword()">
+                    <small>Changer le mot de passe</small>
+                </button>
+            </div>
+
+            <div class="section-body collapse show" id="admin-panel">
+                <div class="row g-3">
+                    <!-- Add Member -->
+                    <div class="col-xl col-lg-4 col-md-6">
+                        <div class="admin-card">
+                            <h5><i class="bi bi-person-plus text-primary"></i> Nouveau Membre</h5>
+                            <div class="mb-3">
+                                <input type="text" class="form-control" id="new-member-name" 
+                                       placeholder="Nom complet">
+                            </div>
+                            <button class="btn btn-primary w-100" onclick="addMember()">
+                                <i class="bi bi-plus-lg"></i> Ajouter
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mark Payment -->
+                    <div class="col-xl col-lg-4 col-md-6">
+                        <div class="admin-card">
+                            <h5><i class="bi bi-check-circle text-success"></i> Marquer Cotisation</h5>
+                            <div class="mb-2">
+                                <select class="form-select" id="member-select"></select>
+                            </div>
+                            <div class="mb-3">
+                                <select class="form-select" id="month-select">
+                                    <option value="01">Janvier</option><option value="02">Février</option>
+                                    <option value="03">Mars</option><option value="04">Avril</option>
+                                    <option value="05">Mai</option><option value="06">Juin</option>
+                                    <option value="07">Juillet</option><option value="08">Août</option>
+                                    <option value="09">Septembre</option><option value="10">Octobre</option>
+                                    <option value="11">Novembre</option><option value="12">Décembre</option>
+                                </select>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-success" onclick="markPayment()">
+                                    <i class="bi bi-check-lg"></i> Marquer Payé
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="unmarkPayment()">
+                                    <i class="bi bi-x-lg"></i> Annuler Paiement
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Income -->
+                    <div class="col-lg-3 col-md-6">
+                        <div class="admin-card">
+                            <h5><i class="bi bi-plus-circle text-success"></i> Autre Entrée</h5>
+                            <div class="mb-2">
+                                <input type="date" class="form-control" id="income-date">
+                            </div>
+                            <div class="mb-2">
+                                <select class="form-select" id="income-type">
+                                    <option value="Don">Don</option>
+                                    <option value="Subvention">Subvention</option>
+                                    <option value="Événement">Événement</option>
+                                    <option value="Vente">Vente</option>
+                                    <option value="Autre">Autre</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <input type="text" class="form-control" id="income-label" 
+                                       placeholder="Description">
+                            </div>
+                            <div class="mb-3">
+                                <input type="number" class="form-control" id="income-amount" 
+                                       placeholder="Montant (CFA)">
+                            </div>
+                            <button class="btn btn-success w-100" onclick="addIncome()">
+                                <i class="bi bi-plus-lg"></i> Ajouter
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Add Expense -->
+                    <div class="col-xl col-lg-4 col-md-6">
+                        <div class="admin-card">
+                            <h5><i class="bi bi-cash-stack text-danger"></i> Nouvelle Dépense</h5>
+                            <div class="mb-2">
+                                <input type="date" class="form-control" id="expense-date">
+                            </div>
+                            <div class="mb-2">
+                                <input type="text" class="form-control" id="expense-label" 
+                                       placeholder="Libellé">
+                            </div>
+                            <div class="mb-3">
+                                <input type="number" class="form-control" id="expense-amount" 
+                                       placeholder="Montant (CFA)">
+                            </div>
+                            <button class="btn btn-danger w-100" onclick="addExpense()">
+                                <i class="bi bi-plus-lg"></i> Enregistrer
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Settings -->
+                    <div class="col-xl col-lg-4 col-md-6">
+                        <div class="admin-card">
+                            <h5><i class="bi bi-sliders text-warning"></i> Paramètres</h5>
+                            <div class="mb-3">
+                                <label class="form-label small text-muted">Montant cotisation mensuelle</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="contribution-amount" value="10000">
+                                    <span class="input-group-text">CFA</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-warning w-100 mb-2" onclick="updateContributionAmount()">
+                                <i class="bi bi-save"></i> Sauvegarder
+                            </button>
+                            <hr>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                    <i class="bi bi-person-x"></i> Supprimer un membre
+                                </button>
+                                <button class="btn btn-outline-dark btn-sm" onclick="resetData()">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Réinitialiser
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions History -->
+        <div class="section-card animate-in">
+            <div class="section-header">
+                <h4><i class="bi bi-clock-history"></i> Historique Financier</h4>
+                <span class="badge bg-light text-dark" id="transactions-count">0 transactions</span>
+            </div>
+            <div class="section-body">
+                <div class="table-responsive">
+                    <table class="table transactions-table" id="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Montant</th>
+                                <th>Type</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="no-transactions" style="display: none;">
+                    <i class="bi bi-inbox"></i>
+                    <p>Aucune transaction enregistrée</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2024-2025 AEERS - Association des Étudiants | Développé avec ❤️</p>
+    </footer>
+
+    <!-- Export FAB -->
+    <button class="export-fab" onclick="generatePDF()" title="Exporter en PDF">
+        <i class="bi bi-file-earmark-pdf"></i>
+    </button>
+
+    <!-- Delete Member Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Supprimer un membre</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Sélectionnez le membre à supprimer. Cette action est irréversible.</p>
+                    <select class="form-select" id="delete-member-select"></select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteMember()">
+                        <i class="bi bi-trash"></i> Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal fade" id="passwordModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-key me-2"></i>Changer le mot de passe</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Mot de passe actuel</label>
+                        <input type="password" class="form-control" id="current-password" placeholder="Mot de passe actuel">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nouveau mot de passe</label>
+                        <input type="password" class="form-control" id="new-password" placeholder="Nouveau mot de passe">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Confirmer le nouveau mot de passe</label>
+                        <input type="password" class="form-control" id="confirm-password" placeholder="Confirmer">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" onclick="changePassword()">
+                        <i class="bi bi-check-lg"></i> Changer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-shield-lock me-2"></i>Confirmation de suppression</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <span id="delete-confirm-message">Voulez-vous vraiment supprimer cet élément ?</span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Entrez le mot de passe admin pour confirmer</label>
+                        <input type="password" class="form-control" id="delete-confirm-password" 
+                               placeholder="Mot de passe admin" onkeypress="if(event.key==='Enter') confirmDelete()">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                        <i class="bi bi-trash"></i> Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        window.jsPDF = window.jspdf.jsPDF;
+
+        // Configuration
+        let currentYear = new Date().getFullYear();
+        const STORAGE_KEY = 'aeers-data-v2';
+        const PASSWORD_KEY = 'aeers-admin-password';
+        const SESSION_KEY = 'aeers-admin-session';
+        const DEFAULT_PASSWORD = 'aeers2024';
+        const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes
+
+        // Fonctions de sécurité
+        function getStoredPassword() {
+            return localStorage.getItem(PASSWORD_KEY) || DEFAULT_PASSWORD;
+        }
+
+        function isSessionValid() {
+            const session = localStorage.getItem(SESSION_KEY);
+            if (!session) return false;
+            const sessionTime = parseInt(session);
+            return Date.now() - sessionTime < SESSION_DURATION;
+        }
+
+        function unlockAdmin() {
+            const password = document.getElementById('admin-password').value;
+            const storedPassword = getStoredPassword();
+
+            if (password === storedPassword) {
+                localStorage.setItem(SESSION_KEY, Date.now().toString());
+                document.getElementById('lock-overlay').style.display = 'none';
+                document.getElementById('session-status').style.display = 'inline-block';
+                document.getElementById('logout-btn').style.display = 'inline-block';
+                document.getElementById('admin-password').value = '';
+                showToast('Accès autorisé !', 'success');
+            } else {
+                showToast('Mot de passe incorrect !', 'error');
+                document.getElementById('admin-password').value = '';
+            }
+        }
+
+        function lockAdmin() {
+            localStorage.removeItem(SESSION_KEY);
+            document.getElementById('lock-overlay').style.display = 'flex';
+            document.getElementById('session-status').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'none';
+            showToast('Déconnecté de l\'espace trésorier', 'info');
+        }
+
+        function checkSession() {
+            if (isSessionValid()) {
+                document.getElementById('lock-overlay').style.display = 'none';
+                document.getElementById('session-status').style.display = 'inline-block';
+                document.getElementById('logout-btn').style.display = 'inline-block';
+            } else {
+                document.getElementById('lock-overlay').style.display = 'flex';
+                document.getElementById('session-status').style.display = 'none';
+                document.getElementById('logout-btn').style.display = 'none';
+            }
+        }
+
+        function showChangePassword() {
+            const modal = new bootstrap.Modal(document.getElementById('passwordModal'));
+            modal.show();
+        }
+
+        function changePassword() {
+            const currentPwd = document.getElementById('current-password').value;
+            const newPwd = document.getElementById('new-password').value;
+            const confirmPwd = document.getElementById('confirm-password').value;
+
+            if (currentPwd !== getStoredPassword()) {
+                showToast('Mot de passe actuel incorrect !', 'error');
+                return;
+            }
+
+            if (newPwd.length < 4) {
+                showToast('Le nouveau mot de passe doit avoir au moins 4 caractères', 'error');
+                return;
+            }
+
+            if (newPwd !== confirmPwd) {
+                showToast('Les mots de passe ne correspondent pas !', 'error');
+                return;
+            }
+
+            localStorage.setItem(PASSWORD_KEY, newPwd);
+            
+            // Fermer le modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('passwordModal'));
+            modal.hide();
+
+            // Reset form
+            document.getElementById('current-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-password').value = '';
+
+            showToast('Mot de passe changé avec succès !', 'success');
+        }
+
+        // Données initiales
+        const defaultData = {
+            members: [
+                {name: "Moussa Diop", payments: {}},
+                {name: "Cheikh Sene", payments: {}},
+                {name: "Ibrahima Sanding", payments: {}},
+                {name: "Cheikh Thioune", payments: {}},
+                {name: "Amadou Thior", payments: {}},
+                {name: "Daouda Dianko", payments: {}},
+                {name: "Matine Diouf", payments: {}},
+                {name: "Cheikh Mbow", payments: {}},
+                {name: "Mamoudou Diop", payments: {}},
+                {name: "Abdou Khadre Diallo", payments: {}},
+                {name: "Bineta Senghor", payments: {}},
+                {name: "Rougui Sow", payments: {}},
+                {name: "Mami Thiam", payments: {}},
+                {name: "Lala Touré", payments: {}},
+                {name: "Bineta Diallo", payments: {}},
+                {name: "Oly Diongue", payments: {}},
+                {name: "Astou Diallo", payments: {}},
+                {name: "Seynaba Camara", payments: {}},
+                {name: "Mariama Diallo", payments: {}},
+                {name: "Dieynaba Ka", payments: {}},
+                {name: "Thioro Ka", payments: {}},
+                {name: "Haby Sarr", payments: {}},
+                {name: "Sophie Ndiaye", payments: {}},
+                {name: "Fatou Samb", payments: {}},
+                {name: "Astou Mané", payments: {}},
+                {name: "Khadija Ba", payments: {}},
+                {name: "Nguénar Mbodj", payments: {}},
+                {name: "Yacine Marone", payments: {}},
+                {name: "Siga Ndiaye", payments: {}},
+                {name: "Khadija Sarr", payments: {}},
+                {name: "Yacine Thiam", payments: {}},
+                {name: "Sadany Aidara", payments: {}},
+                {name: "Khadim Pouye", payments: {}},
+            ],
+            expenses: [],
+            incomes: [],
+            balance: 0,
+            contributionAmount: 10000,
+            transactions: []
+        };
+
+        let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || JSON.parse(JSON.stringify(defaultData));
+        
+        // Migration des anciennes données
+        if (!data.contributionAmount) data.contributionAmount = 10000;
+        if (!data.transactions) data.transactions = [];
+        if (!data.incomes) data.incomes = [];
+
+        // Fonctions utilitaires
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function formatCurrency(amount) {
+            return amount.toLocaleString('fr-FR') + ' CFA';
+        }
+
+        // Formatage pour PDF (évite les caractères spéciaux)
+        function formatCurrencyPDF(amount) {
+            return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' CFA';
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toastId = 'toast-' + Date.now();
+            
+            const icons = {
+                success: 'bi-check-circle-fill',
+                error: 'bi-x-circle-fill',
+                warning: 'bi-exclamation-triangle-fill',
+                info: 'bi-info-circle-fill'
+            };
+
+            const bgColors = {
+                success: 'bg-success',
+                error: 'bg-danger',
+                warning: 'bg-warning',
+                info: 'bg-info'
+            };
+
+            const toastHTML = `
+                <div id="${toastId}" class="toast align-items-center text-white ${bgColors[type]} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="bi ${icons[type]} me-2"></i>${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+
+            container.insertAdjacentHTML('beforeend', toastHTML);
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+            toast.show();
+
+            toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+        }
+
+        // Initialisation
+        function init() {
+            // Vérifier la session admin
+            checkSession();
+
+            // Date actuelle
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date').textContent = new Date().toLocaleDateString('fr-FR', options);
+
+            // Sélecteur d'année
+            const yearSelect = document.getElementById('year-select');
+            for (let year = 2024; year <= 2030; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            }
+
+            // Date du jour pour les formulaires
+            document.getElementById('expense-date').valueAsDate = new Date();
+            document.getElementById('income-date').valueAsDate = new Date();
+
+            // Montant cotisation
+            document.getElementById('contribution-amount').value = data.contributionAmount;
+
+            updateAll();
+
+            // Vérifier la session périodiquement (toutes les minutes)
+            setInterval(checkSession, 60000);
+        }
+
+        function updateAll() {
+            updateTables();
+            updateDashboard();
+            populateMembers();
+            updateTransactionsTable();
+        }
+
+        function updateTables() {
+            const tbody = document.querySelector('#members-table tbody');
+            tbody.innerHTML = '';
+
+            const sortedMembers = [...data.members].sort((a, b) => a.name.localeCompare(b.name));
+
+            sortedMembers.forEach(member => {
+                const row = document.createElement('tr');
+                let totalPaid = 0;
+
+                let cells = `<td><strong>${member.name}</strong></td>`;
+                
+                for (let month = 1; month <= 12; month++) {
+                    const monthKey = month.toString().padStart(2, '0');
+                    const isPaid = member.payments[monthKey];
+                    if (isPaid) totalPaid++;
+
+                    cells += `<td class="${isPaid ? 'status-paid' : 'status-unpaid'}">
+                        <i class="bi ${isPaid ? 'bi-check-circle-fill status-icon paid' : 'bi-x-circle-fill status-icon unpaid'}"></i>
+                    </td>`;
+                }
+
+                cells += `<td><span class="badge ${totalPaid >= 6 ? 'bg-success' : totalPaid >= 3 ? 'bg-warning' : 'bg-danger'}">${totalPaid}/12</span></td>`;
+
+                row.innerHTML = cells;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateDashboard() {
+            // Solde
+            document.getElementById('current-balance').textContent = formatCurrency(data.balance);
+
+            // Membres
+            document.getElementById('total-members').textContent = data.members.length;
+
+            const currentMonth = new Date().getMonth() + 1;
+            const monthKey = currentMonth.toString().padStart(2, '0');
+
+            // Cotisations du mois
+            const paidThisMonth = data.members.filter(m => m.payments[monthKey]).length;
+            const monthContributions = paidThisMonth * data.contributionAmount;
+            document.getElementById('month-contributions').textContent = formatCurrency(monthContributions);
+
+            // Progression
+            const progressPercent = Math.round((paidThisMonth / data.members.length) * 100);
+            document.getElementById('contribution-progress').style.width = progressPercent + '%';
+            document.getElementById('contribution-percent').textContent = progressPercent + '%';
+            document.getElementById('paid-members-info').textContent = `${paidThisMonth} à jour ce mois`;
+
+            // Dépenses du mois
+            const monthExpenses = data.expenses
+                .filter(e => {
+                    const expenseDate = new Date(e.date);
+                    return expenseDate.getMonth() + 1 === currentMonth && 
+                           expenseDate.getFullYear() === currentYear;
+                })
+                .reduce((sum, e) => sum + e.amount, 0);
+            document.getElementById('month-expenses').textContent = '-' + formatCurrency(monthExpenses);
+        }
+
+        function populateMembers() {
+            const select = document.getElementById('member-select');
+            const deleteSelect = document.getElementById('delete-member-select');
+            
+            select.innerHTML = '';
+            deleteSelect.innerHTML = '';
+
+            const sortedMembers = [...data.members].sort((a, b) => a.name.localeCompare(b.name));
+
+            sortedMembers.forEach(member => {
+                const option = document.createElement('option');
+                option.value = member.name;
+                option.textContent = member.name;
+                select.appendChild(option.cloneNode(true));
+                deleteSelect.appendChild(option);
+            });
+        }
+
+        function updateTransactionsTable() {
+            const tbody = document.querySelector('#transactions-table tbody');
+            const noTransactions = document.getElementById('no-transactions');
+            const count = document.getElementById('transactions-count');
+
+            // Combiner dépenses et entrées d'argent (mais PAS les cotisations)
+            const allTransactions = [
+                ...data.expenses.map((e, i) => ({...e, type: 'expense', originalIndex: i})),
+                ...(data.incomes || []).map((e, i) => ({...e, type: 'income', originalIndex: i}))
+            ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            // Calculer les totaux
+            const totalExpenses = data.expenses.reduce((sum, e) => sum + e.amount, 0);
+            const totalIncomes = (data.incomes || []).reduce((sum, e) => sum + e.amount, 0);
+            count.textContent = `${allTransactions.length} transactions | Entrées: +${formatCurrency(totalIncomes)} | Dépenses: -${formatCurrency(totalExpenses)}`;
+
+            if (allTransactions.length === 0) {
+                tbody.innerHTML = '';
+                noTransactions.style.display = 'block';
+                return;
+            }
+
+            noTransactions.style.display = 'none';
+            tbody.innerHTML = '';
+
+            allTransactions.forEach((transaction) => {
+                const row = document.createElement('tr');
+                const isExpense = transaction.type === 'expense';
+
+                row.innerHTML = `
+                    <td>${new Date(transaction.date).toLocaleDateString('fr-FR')}</td>
+                    <td>${transaction.label}</td>
+                    <td class="${isExpense ? 'text-danger' : 'text-success'} fw-bold">
+                        ${isExpense ? '-' : '+'}${formatCurrency(transaction.amount)}
+                    </td>
+                    <td>
+                        <span class="badge ${isExpense ? 'bg-danger' : 'bg-success'}">
+                            <i class="bi ${isExpense ? 'bi-arrow-up' : 'bi-arrow-down'}"></i> 
+                            ${isExpense ? 'Dépense' : transaction.type === 'income' ? 'Entrée' : 'Autre'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-${isExpense ? 'danger' : 'success'}" 
+                                onclick="${isExpense ? 'deleteExpense' : 'deleteIncome'}(${transaction.originalIndex})"
+                                title="Supprimer (mot de passe requis)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Actions
+        function addMember() {
+            const nameInput = document.getElementById('new-member-name');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                showToast('Veuillez entrer le nom du membre', 'error');
+                return;
+            }
+
+            if (data.members.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+                showToast('Ce membre existe déjà !', 'error');
+                return;
+            }
+
+            const newMember = { name: name, payments: {} };
+            for (let month = 1; month <= 12; month++) {
+                newMember.payments[month.toString().padStart(2, '0')] = false;
+            }
+
+            data.members.push(newMember);
+            nameInput.value = '';
+            
+            updateAll();
+            saveData();
+            showToast(`${name} a été ajouté avec succès !`, 'success');
+        }
+
+        function deleteMember() {
+            const memberName = document.getElementById('delete-member-select').value;
+
+            if (!memberName) {
+                showToast('Veuillez sélectionner un membre', 'error');
+                return;
+            }
+
+            const member = data.members.find(m => m.name === memberName);
+            const paidMonths = Object.values(member.payments).filter(paid => paid).length;
+            const amountToDeduct = paidMonths * data.contributionAmount;
+
+            data.members = data.members.filter(m => m.name !== memberName);
+            data.balance -= amountToDeduct;
+
+            // Fermer le modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+            modal.hide();
+
+            updateAll();
+            saveData();
+            showToast(`${memberName} a été supprimé`, 'warning');
+        }
+
+        function markPayment() {
+            const memberName = document.getElementById('member-select').value;
+            const month = document.getElementById('month-select').value;
+            const member = data.members.find(m => m.name === memberName);
+
+            if (!member) {
+                showToast('Membre non trouvé', 'error');
+                return;
+            }
+
+            if (member.payments[month]) {
+                showToast('Cette cotisation est déjà payée', 'info');
+                return;
+            }
+
+            member.payments[month] = true;
+            data.balance += data.contributionAmount;
+
+            updateAll();
+            saveData();
+            showToast(`Cotisation de ${memberName} enregistrée !`, 'success');
+        }
+
+        function unmarkPayment() {
+            const memberName = document.getElementById('member-select').value;
+            const month = document.getElementById('month-select').value;
+            const member = data.members.find(m => m.name === memberName);
+
+            if (!member || !member.payments[month]) {
+                showToast('Cette cotisation n\'est pas marquée comme payée', 'info');
+                return;
+            }
+
+            member.payments[month] = false;
+            data.balance -= data.contributionAmount;
+
+            updateAll();
+            saveData();
+            showToast(`Cotisation de ${memberName} annulée`, 'warning');
+        }
+
+        function addExpense() {
+            const date = document.getElementById('expense-date').value;
+            const label = document.getElementById('expense-label').value.trim();
+            const amount = parseInt(document.getElementById('expense-amount').value);
+
+            if (!date || !label || !amount || amount <= 0) {
+                showToast('Veuillez remplir tous les champs correctement', 'error');
+                return;
+            }
+
+            data.expenses.push({ date, label, amount });
+            data.balance -= amount;
+
+            // Reset form
+            document.getElementById('expense-label').value = '';
+            document.getElementById('expense-amount').value = '';
+
+            updateAll();
+            saveData();
+            showToast('Dépense enregistrée !', 'success');
+        }
+
+        function addIncome() {
+            const date = document.getElementById('income-date').value;
+            const type = document.getElementById('income-type').value;
+            const description = document.getElementById('income-label').value.trim();
+            const amount = parseInt(document.getElementById('income-amount').value);
+
+            if (!date || !amount || amount <= 0) {
+                showToast('Veuillez remplir la date et le montant', 'error');
+                return;
+            }
+
+            const label = description ? `${type} - ${description}` : type;
+            data.incomes.push({ date, label, amount, type });
+            data.balance += amount;
+
+            // Reset form
+            document.getElementById('income-label').value = '';
+            document.getElementById('income-amount').value = '';
+
+            updateAll();
+            saveData();
+            showToast(`${type} de ${formatCurrency(amount)} enregistré !`, 'success');
+        }
+
+        // Variables pour la suppression sécurisée
+        let pendingDeleteType = null;
+        let pendingDeleteIndex = null;
+
+        function deleteIncome(index) {
+            const income = data.incomes[index];
+            pendingDeleteType = 'income';
+            pendingDeleteIndex = index;
+            
+            document.getElementById('delete-confirm-message').textContent = 
+                `Voulez-vous vraiment supprimer "${income.label}" (+${formatCurrency(income.amount)}) ?`;
+            document.getElementById('delete-confirm-password').value = '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            modal.show();
+        }
+
+        function deleteExpense(index) {
+            const expense = data.expenses[index];
+            pendingDeleteType = 'expense';
+            pendingDeleteIndex = index;
+            
+            document.getElementById('delete-confirm-message').textContent = 
+                `Voulez-vous vraiment supprimer la dépense "${expense.label}" (-${formatCurrency(expense.amount)}) ?`;
+            document.getElementById('delete-confirm-password').value = '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            modal.show();
+        }
+
+        function confirmDelete() {
+            const password = document.getElementById('delete-confirm-password').value;
+            const storedPassword = getStoredPassword();
+
+            if (password !== storedPassword) {
+                showToast('Mot de passe incorrect !', 'error');
+                document.getElementById('delete-confirm-password').value = '';
+                return;
+            }
+
+            // Fermer le modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
+            modal.hide();
+
+            // Exécuter la suppression
+            if (pendingDeleteType === 'income' && pendingDeleteIndex !== null) {
+                const income = data.incomes[pendingDeleteIndex];
+                data.balance -= income.amount;
+                data.incomes.splice(pendingDeleteIndex, 1);
+                showToast('Entrée supprimée', 'warning');
+            } else if (pendingDeleteType === 'expense' && pendingDeleteIndex !== null) {
+                const expense = data.expenses[pendingDeleteIndex];
+                data.balance += expense.amount;
+                data.expenses.splice(pendingDeleteIndex, 1);
+                showToast('Dépense supprimée', 'warning');
+            }
+
+            // Reset
+            pendingDeleteType = null;
+            pendingDeleteIndex = null;
+            document.getElementById('delete-confirm-password').value = '';
+
+            updateAll();
+            saveData();
+        }
+
+        function updateContributionAmount() {
+            const amount = parseInt(document.getElementById('contribution-amount').value);
+            if (amount && amount > 0) {
+                data.contributionAmount = amount;
+                saveData();
+                showToast(`Montant de cotisation mis à jour : ${formatCurrency(amount)}`, 'success');
+            }
+        }
+
+        function filterMembers() {
+            const searchTerm = document.getElementById('search-member').value.toLowerCase();
+            const rows = document.querySelectorAll('#members-table tbody tr');
+
+            rows.forEach(row => {
+                const name = row.cells[0].textContent.toLowerCase();
+                row.style.display = name.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        function changeYear() {
+            currentYear = parseInt(document.getElementById('year-select').value);
+            updateDashboard();
+        }
+
+        function resetData() {
+            if (confirm('⚠️ Cette action supprimera TOUTES les données ! Êtes-vous sûr ?')) {
+                if (confirm('Cette action est IRRÉVERSIBLE. Confirmer ?')) {
+                    localStorage.removeItem(STORAGE_KEY);
+                    location.reload();
+                }
+            }
+        }
+
+        function generatePDF() {
+            try {
+                const doc = new jsPDF();
+
+                // Header
+                doc.setFillColor(102, 126, 234);
+                doc.rect(0, 0, 220, 35, 'F');
+
+                doc.setTextColor(255, 255, 255);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(22);
+                doc.text("AEERS - Bilan des Cotisations", 15, 20);
+
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "normal");
+                doc.text(new Date().toLocaleDateString('fr-FR', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                }), 15, 30);
+
+                // Stats
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
+                doc.text(`Solde actuel : ${formatCurrencyPDF(data.balance)}`, 15, 45);
+                doc.text(`Nombre de membres : ${data.members.length}`, 15, 55);
+
+                // Table des membres
+                const headers = [['Membre', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 
+                                'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc', 'Total']];
+
+                const body = data.members.map(member => {
+                    const cells = [member.name];
+                    let total = 0;
+                    for (let month = 1; month <= 12; month++) {
+                        const monthKey = month.toString().padStart(2, '0');
+                        const isPaid = member.payments[monthKey];
+                        if (isPaid) total++;
+                        cells.push(isPaid ? '✓' : '✗');
+                    }
+                    cells.push(`${total}/12`);
+                    return cells;
+                });
+
+                doc.autoTable({
+                    startY: 65,
+                    head: headers,
+                    body: body,
+                    theme: 'grid',
+                    headStyles: {
+                        fillColor: [44, 62, 80],
+                        textColor: 255,
+                        fontSize: 8,
+                        halign: 'center'
+                    },
+                    bodyStyles: { fontSize: 7, halign: 'center' },
+                    columnStyles: { 0: { halign: 'left', cellWidth: 35 } },
+                    styles: { cellPadding: 2 }
+                });
+
+                // Entrées d'argent (dons, subventions, etc.)
+                if (data.incomes && data.incomes.length > 0) {
+                    doc.setFontSize(12);
+                    doc.setFont("helvetica", "bold");
+                    doc.setTextColor(39, 174, 96);
+                    doc.text("Autres entrées d'argent", 15, doc.lastAutoTable.finalY + 12);
+
+                    const incomeBody = data.incomes.map(e => [
+                        new Date(e.date).toLocaleDateString('fr-FR'),
+                        e.label,
+                        `+${formatCurrencyPDF(e.amount)}`
+                    ]);
+
+                    doc.autoTable({
+                        startY: doc.lastAutoTable.finalY + 15,
+                        head: [['Date', 'Description', 'Montant']],
+                        body: incomeBody,
+                        theme: 'striped',
+                        headStyles: { fillColor: [39, 174, 96], textColor: 255 }
+                    });
+                }
+
+                // Dépenses
+                if (data.expenses.length > 0) {
+                    doc.setFontSize(12);
+                    doc.setFont("helvetica", "bold");
+                    doc.setTextColor(231, 76, 60);
+                    doc.text("Dépenses", 15, doc.lastAutoTable.finalY + 12);
+
+                    const expenseBody = data.expenses.map(e => [
+                        new Date(e.date).toLocaleDateString('fr-FR'),
+                        e.label,
+                        `-${formatCurrencyPDF(e.amount)}`
+                    ]);
+
+                    doc.autoTable({
+                        startY: doc.lastAutoTable.finalY + 15,
+                        head: [['Date', 'Description', 'Montant']],
+                        body: expenseBody,
+                        theme: 'striped',
+                        headStyles: { fillColor: [231, 76, 60], textColor: 255 }
+                    });
+                }
+
+                // Footer
+                const pageCount = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(8);
+                    doc.setTextColor(128, 128, 128);
+                    doc.text(`AEERS - Page ${i}/${pageCount}`, 
+                        doc.internal.pageSize.width / 2, 
+                        doc.internal.pageSize.height - 10, 
+                        { align: 'center' }
+                    );
+                }
+
+                doc.save(`AEERS_Bilan_${new Date().toISOString().slice(0, 10)}.pdf`);
+                showToast('PDF généré avec succès !', 'success');
+
+            } catch (error) {
+                console.error('Erreur PDF:', error);
+                showToast('Erreur lors de la génération du PDF', 'error');
+            }
+        }
+
+        // Initialisation au chargement
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
