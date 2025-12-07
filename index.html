@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <!-- Chart.js for PDF diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -1705,45 +1707,42 @@
                 doc.text(`Solde actuel : ${formatCurrencyPDF(data.balance)}`, 15, 45);
                 doc.text(`Nombre de membres : ${data.members.length}`, 15, 55);
 
-                // Table des membres
-                const headers = [['Membre', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 
-                                'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc', 'Total']];
-
-                const body = data.members.map(member => {
-                    const cells = [member.name];
-                    let total = 0;
-                    for (let month = 1; month <= 12; month++) {
-                        const monthKey = month.toString().padStart(2, '0');
-                        const isPaid = member.payments[monthKey];
-                        if (isPaid) total++;
-                        cells.push(isPaid ? '✓' : '✗');
-                    }
-                    cells.push(`${total}/12`);
-                    return cells;
-                });
-
-                doc.autoTable({
-                    startY: 65,
-                    head: headers,
-                    body: body,
-                    theme: 'grid',
-                    headStyles: {
-                        fillColor: [44, 62, 80],
-                        textColor: 255,
-                        fontSize: 8,
-                        halign: 'center'
+                // Générer un diagramme circulaire des revenus/dépenses
+                const chartCanvas = document.createElement('canvas');
+                chartCanvas.width = 400;
+                chartCanvas.height = 200;
+                const ctx = chartCanvas.getContext('2d');
+                const totalIncome = data.incomes.reduce((sum, e) => sum + e.amount, 0);
+                const totalExpense = data.expenses.reduce((sum, e) => sum + e.amount, 0);
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Entrées', 'Dépenses'],
+                        datasets: [{
+                            data: [totalIncome, totalExpense],
+                            backgroundColor: ['#27ae60', '#e74c3c'],
+                        }]
                     },
-                    bodyStyles: { fontSize: 7, halign: 'center' },
-                    columnStyles: { 0: { halign: 'left', cellWidth: 35 } },
-                    styles: { cellPadding: 2 }
+                    options: {
+                        plugins: {
+                            legend: { display: true, position: 'bottom' },
+                            title: { display: true, text: 'Répartition Entrées / Dépenses' }
+                        }
+                    }
                 });
+                // Convertir le graphique en image et l'ajouter au PDF
+                const chartImg = chartCanvas.toDataURL('image/png');
+                doc.addImage(chartImg, 'PNG', 120, 40, 70, 40);
+
+                // Espace pour stats
+                let lastY = 65;
 
                 // Entrées d'argent (dons, subventions, etc.)
                 if (data.incomes && data.incomes.length > 0) {
                     doc.setFontSize(12);
                     doc.setFont("helvetica", "bold");
                     doc.setTextColor(39, 174, 96);
-                    doc.text("Autres entrées d'argent", 15, doc.lastAutoTable.finalY + 12);
+                    doc.text("Autres entrées d'argent", 15, lastY + 12);
 
                     const incomeBody = data.incomes.map(e => [
                         new Date(e.date).toLocaleDateString('fr-FR'),
@@ -1752,12 +1751,13 @@
                     ]);
 
                     doc.autoTable({
-                        startY: doc.lastAutoTable.finalY + 15,
+                        startY: lastY + 15,
                         head: [['Date', 'Description', 'Montant']],
                         body: incomeBody,
                         theme: 'striped',
                         headStyles: { fillColor: [39, 174, 96], textColor: 255 }
                     });
+                    lastY = doc.lastAutoTable.finalY;
                 }
 
                 // Dépenses
@@ -1765,7 +1765,7 @@
                     doc.setFontSize(12);
                     doc.setFont("helvetica", "bold");
                     doc.setTextColor(231, 76, 60);
-                    doc.text("Dépenses", 15, doc.lastAutoTable.finalY + 12);
+                    doc.text("Dépenses", 15, lastY + 12);
 
                     const expenseBody = data.expenses.map(e => [
                         new Date(e.date).toLocaleDateString('fr-FR'),
@@ -1774,7 +1774,7 @@
                     ]);
 
                     doc.autoTable({
-                        startY: doc.lastAutoTable.finalY + 15,
+                        startY: lastY + 15,
                         head: [['Date', 'Description', 'Montant']],
                         body: expenseBody,
                         theme: 'striped',
