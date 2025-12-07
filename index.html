@@ -1708,9 +1708,15 @@
                 doc.text(`Nombre de membres : ${data.members.length}`, 15, 55);
 
                 // Générer un diagramme circulaire des revenus/dépenses
-                const chartCanvas = document.createElement('canvas');
-                chartCanvas.width = 400;
-                chartCanvas.height = 200;
+                let chartCanvas = document.getElementById('pdf-chart-canvas');
+                if (!chartCanvas) {
+                    chartCanvas = document.createElement('canvas');
+                    chartCanvas.id = 'pdf-chart-canvas';
+                    chartCanvas.width = 400;
+                    chartCanvas.height = 200;
+                    chartCanvas.style.display = 'none';
+                    document.body.appendChild(chartCanvas);
+                }
                 const ctx = chartCanvas.getContext('2d');
                 const totalIncome = data.incomes.reduce((sum, e) => sum + e.amount, 0);
                 const totalExpense = data.expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -1724,79 +1730,74 @@
                         }]
                     },
                     options: {
+                        animation: false,
                         plugins: {
                             legend: { display: true, position: 'bottom' },
                             title: { display: true, text: 'Répartition Entrées / Dépenses' }
                         }
                     }
                 });
-                // Convertir le graphique en image et l'ajouter au PDF
-                const chartImg = chartCanvas.toDataURL('image/png');
-                doc.addImage(chartImg, 'PNG', 120, 40, 70, 40);
+                // Attendre le rendu du graphique avant d'ajouter au PDF
+                setTimeout(function() {
+                    const chartImg = chartCanvas.toDataURL('image/png');
+                    doc.addImage(chartImg, 'PNG', 120, 40, 70, 40);
+                    // Espace pour stats
+                    let lastY = 65;
 
-                // Espace pour stats
-                let lastY = 65;
-
-                // Entrées d'argent (dons, subventions, etc.)
-                if (data.incomes && data.incomes.length > 0) {
-                    doc.setFontSize(12);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(39, 174, 96);
-                    doc.text("Autres entrées d'argent", 15, lastY + 12);
-
-                    const incomeBody = data.incomes.map(e => [
-                        new Date(e.date).toLocaleDateString('fr-FR'),
-                        e.label,
-                        `+${formatCurrencyPDF(e.amount)}`
-                    ]);
-
-                    doc.autoTable({
-                        startY: lastY + 15,
-                        head: [['Date', 'Description', 'Montant']],
-                        body: incomeBody,
-                        theme: 'striped',
-                        headStyles: { fillColor: [39, 174, 96], textColor: 255 }
-                    });
-                    lastY = doc.lastAutoTable.finalY;
-                }
-
-                // Dépenses
-                if (data.expenses.length > 0) {
-                    doc.setFontSize(12);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(231, 76, 60);
-                    doc.text("Dépenses", 15, lastY + 12);
-
-                    const expenseBody = data.expenses.map(e => [
-                        new Date(e.date).toLocaleDateString('fr-FR'),
-                        e.label,
-                        `-${formatCurrencyPDF(e.amount)}`
-                    ]);
-
-                    doc.autoTable({
-                        startY: lastY + 15,
-                        head: [['Date', 'Description', 'Montant']],
-                        body: expenseBody,
-                        theme: 'striped',
-                        headStyles: { fillColor: [231, 76, 60], textColor: 255 }
-                    });
-                }
-
-                // Footer
-                const pageCount = doc.internal.getNumberOfPages();
-                for (let i = 1; i <= pageCount; i++) {
-                    doc.setPage(i);
-                    doc.setFontSize(8);
-                    doc.setTextColor(128, 128, 128);
-                    doc.text(`AEERS - Page ${i}/${pageCount}`, 
-                        doc.internal.pageSize.width / 2, 
-                        doc.internal.pageSize.height - 10, 
-                        { align: 'center' }
-                    );
-                }
-
-                doc.save(`AEERS_Bilan_${new Date().toISOString().slice(0, 10)}.pdf`);
-                showToast('PDF généré avec succès !', 'success');
+                    // Entrées d'argent (dons, subventions, etc.)
+                    if (data.incomes && data.incomes.length > 0) {
+                        doc.setFontSize(12);
+                        doc.setFont("helvetica", "bold");
+                        doc.setTextColor(39, 174, 96);
+                        doc.text("Autres entrées d'argent", 15, lastY + 12);
+                        const incomeBody = data.incomes.map(e => [
+                            new Date(e.date).toLocaleDateString('fr-FR'),
+                            e.label,
+                            `+${formatCurrencyPDF(e.amount)}`
+                        ]);
+                        doc.autoTable({
+                            startY: lastY + 15,
+                            head: [['Date', 'Description', 'Montant']],
+                            body: incomeBody,
+                            theme: 'striped',
+                            headStyles: { fillColor: [39, 174, 96], textColor: 255 }
+                        });
+                        lastY = doc.lastAutoTable.finalY;
+                    }
+                    // Dépenses
+                    if (data.expenses.length > 0) {
+                        doc.setFontSize(12);
+                        doc.setFont("helvetica", "bold");
+                        doc.setTextColor(231, 76, 60);
+                        doc.text("Dépenses", 15, lastY + 12);
+                        const expenseBody = data.expenses.map(e => [
+                            new Date(e.date).toLocaleDateString('fr-FR'),
+                            e.label,
+                            `-${formatCurrencyPDF(e.amount)}`
+                        ]);
+                        doc.autoTable({
+                            startY: lastY + 15,
+                            head: [['Date', 'Description', 'Montant']],
+                            body: expenseBody,
+                            theme: 'striped',
+                            headStyles: { fillColor: [231, 76, 60], textColor: 255 }
+                        });
+                    }
+                    // Footer
+                    const pageCount = doc.internal.getNumberOfPages();
+                    for (let i = 1; i <= pageCount; i++) {
+                        doc.setPage(i);
+                        doc.setFontSize(8);
+                        doc.setTextColor(128, 128, 128);
+                        doc.text(`AEERS - Page ${i}/${pageCount}`,
+                            doc.internal.pageSize.width / 2,
+                            doc.internal.pageSize.height - 10,
+                            { align: 'center' }
+                        );
+                    }
+                    doc.save(`AEERS_Bilan_${new Date().toISOString().slice(0, 10)}.pdf`);
+                    showToast('PDF généré avec succès !', 'success');
+                }, 800);
 
             } catch (error) {
                 console.error('Erreur PDF:', error);
