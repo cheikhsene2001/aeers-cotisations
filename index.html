@@ -625,11 +625,11 @@
         </div>
 
         <!-- Members Table Section -->
-        <div class="section-card animate-in">
+        <div class="section-card animate-in" id="cotisations-section">
             <div class="section-header">
                 <h4><i class="bi bi-table"></i> État des Cotisations</h4>
                 <div class="d-flex gap-2">
-                    <div class="search-box">
+                    <div class="search-box" id="search-box-container">
                         <i class="bi bi-search"></i>
                         <input type="text" class="form-control form-control-sm" id="search-member" 
                                placeholder="Rechercher un membre..." onkeyup="filterMembers()">
@@ -637,7 +637,17 @@
                 </div>
             </div>
             <div class="section-body">
-                <div class="table-container">
+                <!-- Overlay pour masquer les cotisations aux non-admins -->
+                <div id="cotisations-lock-overlay" class="position-relative" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 10px;">
+                    <i class="bi bi-lock-fill text-secondary" style="font-size: 4rem; margin-bottom: 20px;"></i>
+                    <h5 class="text-secondary mb-3">Accès Réservé au Trésorier</h5>
+                    <p class="text-muted text-center mb-4">Le détail des cotisations est confidentiel.<br>Seul l'administrateur peut voir qui a payé.</p>
+                    <button class="btn btn-primary" onclick="scrollToAdminSection()">
+                        <i class="bi bi-key"></i> Se Connecter
+                    </button>
+                </div>
+                <!-- Tableau des cotisations (visible uniquement pour admin) -->
+                <div class="table-container" id="cotisations-table-container" style="display: none;">
                     <table class="table members-table" id="members-table">
                         <thead>
                             <tr>
@@ -1117,6 +1127,10 @@
                 document.getElementById('session-status').style.display = 'inline-block';
                 document.getElementById('logout-btn').style.display = 'inline-block';
                 document.getElementById('admin-password').value = '';
+                // Afficher le tableau des cotisations
+                document.getElementById('cotisations-lock-overlay').style.display = 'none';
+                document.getElementById('cotisations-table-container').style.display = 'block';
+                document.getElementById('search-box-container').style.display = 'block';
                 showToast('Accès autorisé !', 'success');
             } else {
                 showToast('Mot de passe incorrect !', 'error');
@@ -1129,6 +1143,10 @@
             document.getElementById('lock-overlay').style.display = 'flex';
             document.getElementById('session-status').style.display = 'none';
             document.getElementById('logout-btn').style.display = 'none';
+            // Masquer le tableau des cotisations
+            document.getElementById('cotisations-lock-overlay').style.display = 'flex';
+            document.getElementById('cotisations-table-container').style.display = 'none';
+            document.getElementById('search-box-container').style.display = 'none';
             showToast('Déconnecté de l\'espace trésorier', 'info');
         }
 
@@ -1137,11 +1155,24 @@
                 document.getElementById('lock-overlay').style.display = 'none';
                 document.getElementById('session-status').style.display = 'inline-block';
                 document.getElementById('logout-btn').style.display = 'inline-block';
+                // Afficher le tableau des cotisations
+                document.getElementById('cotisations-lock-overlay').style.display = 'none';
+                document.getElementById('cotisations-table-container').style.display = 'block';
+                document.getElementById('search-box-container').style.display = 'block';
             } else {
                 document.getElementById('lock-overlay').style.display = 'flex';
                 document.getElementById('session-status').style.display = 'none';
                 document.getElementById('logout-btn').style.display = 'none';
+                // Masquer le tableau des cotisations
+                document.getElementById('cotisations-lock-overlay').style.display = 'flex';
+                document.getElementById('cotisations-table-container').style.display = 'none';
+                document.getElementById('search-box-container').style.display = 'none';
             }
+        }
+
+        // Fonction pour scroller vers la section admin
+        function scrollToAdminSection() {
+            document.getElementById('admin-section').scrollIntoView({ behavior: 'smooth' });
         }
 
         function showChangePassword() {
